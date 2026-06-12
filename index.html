@@ -36,7 +36,8 @@
   .aviso-decay{font-size:11px;text-align:center;color:#FF8C8C;margin-bottom:14px}
   .btn{border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:13px}
   .btn-ancho{display:block;width:100%;padding:10px;background:var(--surface);
-    border:1px solid var(--line);color:var(--muted);margin-bottom:12px;border-radius:12px}
+    border:1px solid var(--line);color:var(--muted);margin-bottom:12px;border-radius:12px;
+    font-weight:600;font-size:13px;cursor:pointer}
   .fila-lista{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px}
   .btn-add{background:var(--violeta);color:#fff;padding:6px 12px;border-radius:10px}
   .habito{display:flex;align-items:center;gap:10px;border-radius:12px;padding:11px 12px;
@@ -51,7 +52,6 @@
   .h-del{background:none;border:none;color:var(--dim);font-size:12px;padding:2px 4px;cursor:pointer}
   .seccion-mal{font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--rojo);
     margin:22px 0 10px}
-  /* formulario */
   .form{background:var(--surface);border:1px solid var(--line);border-radius:12px;
     padding:12px;margin-bottom:14px;display:none}
   .form.abierto{display:block}
@@ -69,8 +69,7 @@
     border-radius:8px;font-weight:700}
   .stepper{display:flex;gap:4px;align-items:stretch}
   .stepper .mini{width:30px;background:var(--bg);border:1px solid var(--line);
-    color:var(--txt);border-radius:8px;font-weight:700}
-  /* calendario */
+    color:var(--txt);border-radius:8px;font-weight:700;cursor:pointer}
   .cal{background:var(--surface);border:1px solid var(--line);border-radius:12px;
     padding:12px;margin-bottom:16px;display:none}
   .cal.abierto{display:block}
@@ -86,6 +85,10 @@
     background:var(--rojo);bottom:2px;right:2px}
   .cal-leyenda{display:flex;gap:12px;font-size:11px;color:var(--dim);margin-top:8px}
   .vacio{text-align:center;padding:36px 0;font-size:13px;color:var(--muted)}
+  .footer-datos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:24px}
+  .footer-datos button{padding:9px;border-radius:10px;font-size:12px;font-weight:600;
+    background:var(--surface);border:1px solid var(--line);color:var(--muted);cursor:pointer}
+  .nota-datos{font-size:10px;color:var(--dim);text-align:center;margin-top:6px}
 </style>
 </head>
 <body>
@@ -121,6 +124,12 @@
   </div>
   <div id="lista-buenos"></div>
   <div id="seccion-malos"></div>
+  <div class="footer-datos">
+    <button onclick="exportar()">💾 Exportar copia</button>
+    <button onclick="document.getElementById('importfile').click()">📥 Importar copia</button>
+  </div>
+  <div class="nota-datos">Tus datos viven solo en este navegador. Exporta una copia de vez en cuando.</div>
+  <input type="file" id="importfile" accept=".json,application/json" style="display:none" onchange="importar(event)">
 </div>
 
 <script>
@@ -141,14 +150,15 @@ const PRESETS = [
   { name:"Hacer deporte", tipo:"bueno", cats:["cuerpo","energia","disciplina"], freq:{tipo:"semanal",objetivo:3}, titulo:"Espartano" },
   { name:"Leer", tipo:"bueno", cats:["mente"], freq:{tipo:"diario"} },
   { name:"Hablar con 5 personas", tipo:"bueno", cats:["social"], freq:{tipo:"diario"} },
-  { name:"Caer (NoFap)", tipo:"malo", cats:["disciplina","energia"], freq:{tipo:"diario"} },
+  { name:"Caer", tipo:"malo", cats:["disciplina","energia"], freq:{tipo:"diario"} },
   { name:"1h a un proyecto", tipo:"bueno", cats:["mente","disciplina"], freq:{tipo:"semanal",objetivo:4}, titulo:"Constructor" },
   { name:"+1h seguida con el móvil", tipo:"malo", cats:["mente","disciplina"], freq:{tipo:"diario"} },
   { name:"Estudiar 1h+ (uni)", tipo:"bueno", cats:["mente","disciplina"], freq:{tipo:"diario"} },
-  { name:"Psicotécnicos ATC 20 min", tipo:"bueno", cats:["mente"], freq:{tipo:"semanal",objetivo:4}, titulo:"Controlador" },
   { name:"Dormir antes de las 00:30", tipo:"bueno", cats:["energia","disciplina"], freq:{tipo:"diario"} },
   { name:"Planificar el día (5 min)", tipo:"bueno", cats:["disciplina"], freq:{tipo:"diario"} },
   { name:"Comida basura", tipo:"malo", cats:["cuerpo","energia"], freq:{tipo:"diario"} },
+  { name:"Quedar con amigos", tipo:"bueno", cats:["social","energia"], freq:{tipo:"semanal",objetivo:2}, titulo:"Alma del grupo" },
+  { name:"Llamar a un amigo o familiar", tipo:"bueno", cats:["social"], freq:{tipo:"semanal",objetivo:2}, titulo:"Cercano" },
 ];
 const TITULOS_STAT = { cuerpo:"Titán", mente:"Erudito", disciplina:"Estratega", social:"Carismático", energia:"Dínamo" };
 
@@ -158,16 +168,34 @@ try {
   const raw = localStorage.getItem(KEY);
   if (raw) D = JSON.parse(raw);
 } catch(e){}
+if (!D.habits) D.habits = [];
+if (!D.log) D.log = {};
 if (!D.meta) D.meta = {};
-if (!D.meta.seeded) {
+
+// migración v5: renombrar "Caer (NoFap)" y eliminar psicotécnicos
+if (!D.meta.v5) {
+  D.habits.forEach(h=>{ if (h.name.toLowerCase()==="caer (nofap)") h.name = "Caer"; });
+  const del = new Set(D.habits.filter(h=>h.name.toLowerCase().startsWith("psicotécnicos")).map(h=>h.id));
+  if (del.size){
+    D.habits = D.habits.filter(h=>!del.has(h.id));
+    for (const f of Object.keys(D.log)){
+      D.log[f] = D.log[f].filter(id=>!del.has(id));
+      if (!D.log[f].length) delete D.log[f];
+    }
+  }
+  D.meta.v5 = true;
+}
+// sembrar presets que falten (flag nuevo para que entren los sociales)
+if (!D.meta.seeded5) {
   const exist = new Set(D.habits.map(h=>h.name.toLowerCase()));
   PRESETS.forEach((p,i)=>{
     if (!exist.has(p.name.toLowerCase()))
       D.habits.push({...p, id:"p"+Date.now().toString(36)+i, createdAt:hoy()});
   });
   D.meta.seeded = true;
-  guardar();
+  D.meta.seeded5 = true;
 }
+guardar();
 
 function guardar(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){} }
 
@@ -181,9 +209,29 @@ function nivelDe(xp){ return Math.floor(Math.sqrt(xp/25))+1; }
 function xpNivel(l){ return Math.pow(l-1,2)*25; }
 function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function cat(id){ return CATS.find(c=>c.id===id); }
+function multDeRun(run){ return run>=7 ? 2 : run>=3 ? 1.5 : 1; }
 
 // ================= Cálculos =================
+// multiplicador histórico por hábito y fecha (solo buenos diarios)
+function mapaMults(){
+  const m = {};
+  for (const h of D.habits){
+    if (h.tipo!=="bueno" || h.freq.tipo!=="diario") continue;
+    const fechas = Object.keys(D.log).filter(f=>D.log[f].includes(h.id)).sort();
+    let run = 0, prev = null;
+    const mm = {};
+    for (const f of fechas){
+      run = (prev && difDias(prev,f)===1) ? run+1 : 1;
+      mm[f] = multDeRun(run);
+      prev = f;
+    }
+    m[h.id] = mm;
+  }
+  return m;
+}
+
 function calcular(){
+  const mults = mapaMults();
   const xpCat = {}; CATS.forEach(c=>xpCat[c.id]=0);
   const ultAct = {}; CATS.forEach(c=>ultAct[c.id]=null);
   let xpTotal = 0;
@@ -191,7 +239,7 @@ function calcular(){
     for (const hid of D.log[f]){
       const h = D.habits.find(x=>x.id===hid);
       if (!h) continue;
-      const delta = h.tipo==="malo" ? -XP_NEG : XP_POS;
+      const delta = h.tipo==="malo" ? -XP_NEG : XP_POS * ((mults[h.id]||{})[f]||1);
       for (const c of h.cats){
         if (xpCat[c]===undefined) continue;
         xpCat[c]+=delta; xpTotal+=delta;
@@ -211,7 +259,7 @@ function calcular(){
     decayendo.push(dec);
     return statValor(xp);
   });
-  return { valores, decayendo, xpTotal };
+  return { valores, decayendo, xpTotal: Math.round(xpTotal) };
 }
 
 function racha(id){
@@ -247,6 +295,36 @@ function borrarHabit(id){
     if (!D.log[f].length) delete D.log[f];
   }
   guardar(); render();
+}
+
+// ---- exportar / importar ----
+function exportar(){
+  const blob = new Blob([JSON.stringify(D,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "habitos-backup-"+hoy()+".json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function importar(ev){
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const d = JSON.parse(reader.result);
+      if (!d || !Array.isArray(d.habits) || typeof d.log!=="object") throw new Error("formato");
+      if (!confirm("Esto reemplazará tus datos actuales por los de la copia. ¿Continuar?")) return;
+      D = d;
+      if (!D.meta) D.meta = {};
+      guardar(); render();
+      alert("Copia importada correctamente ✔");
+    }catch(e){ alert("El archivo no es una copia válida."); }
+  };
+  reader.readAsText(file);
+  ev.target.value = "";
 }
 
 // ---- formulario ----
@@ -371,11 +449,19 @@ function filaHabito(h){
   const sem = vecesSemana(h.id);
   const corona = semanal && sem>=h.freq.objetivo;
   const r = malo ? diasLimpio(h) : racha(h.id);
+  // multiplicador vigente (el que aplica/aplicaría la marca de hoy)
+  const mult = (!malo && !semanal) ? multDeRun(done ? r : r+1) : 1;
   let extra = "";
   if (malo) extra = done ? '<span style="color:#FF5C5C">hoy has caído</span>'
     : (r>0 ? `<span style="color:#5EF0A0">🛡️ ${r} ${r===1?"día":"días"} limpio</span>` : "");
   else if (semanal) extra = `<span style="color:${corona?"#FFD700":"#8B93B8"}">${sem}/${h.freq.objetivo} esta semana${corona?(h.titulo?` · 👑 ${esc(h.titulo)}`:" · 👑"):""}</span>`;
-  else if (r>1) extra = `<span style="color:#FFB454">🔥 ${r} días</span>`;
+  else {
+    const partes = [];
+    if (r>1) partes.push(`🔥 ${r} días`);
+    if (mult>1) partes.push(`<b style="color:#FFD700">x${mult}</b>`);
+    if (partes.length) extra = `<span style="color:#FFB454">${partes.join(" · ")}</span>`;
+  }
+  const xpMostrar = malo ? XP_NEG*h.cats.length : Math.round(XP_POS*mult)*h.cats.length;
   return `<div class="habito" style="${[
       done?`background:${malo?"#2A1420":"#16203A"}`:"",
       `border-color:${corona?"#FFD700":done?color+"66":"#232A4A"}`,
@@ -390,7 +476,7 @@ function filaHabito(h){
         ${extra}
       </div>
     </div>
-    <span class="h-xp mono" style="${malo?"color:#FF5C5C":""}">${malo?"−":"+"}${(malo?XP_NEG:XP_POS)*h.cats.length}xp</span>
+    <span class="h-xp mono" style="${malo?"color:#FF5C5C":mult>1?"color:#FFD700":""}">${malo?"−":"+"}${xpMostrar}xp</span>
     <button class="h-del" onclick="borrarHabit('${h.id}')">✕</button>
   </div>`;
 }
