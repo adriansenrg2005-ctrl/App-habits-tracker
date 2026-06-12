@@ -1,0 +1,13 @@
+{
+  "name": "Hábitos RPG",
+  "short_name": "Hábitos",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0A0C16",
+  "theme_color": "#0A0C16",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
