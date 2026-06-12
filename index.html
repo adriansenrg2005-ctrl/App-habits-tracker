@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hábitos">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <title>Hábitos RPG</title>
 <style>
   :root{
@@ -15,9 +18,18 @@
     --ambar:#FFB454; --violeta:#7C5CFF; --cian:#4ED6FF; --verde:#5EF0A0; --rosa:#FF6E9C;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;
-    padding:max(16px,env(safe-area-inset-top)) 16px 96px;min-height:100vh}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;overflow:hidden}
+  .paginas{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .paginas::-webkit-scrollbar{display:none}
+  .pagina{min-width:100%;height:100%;overflow-y:auto;scroll-snap-align:start;scroll-snap-stop:always;
+    padding:max(16px,env(safe-area-inset-top)) 16px 110px}
   .wrap{max-width:430px;margin:0 auto}
+  .dots{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:0;right:0;
+    display:flex;justify-content:center;gap:6px;pointer-events:none;z-index:10}
+  .dot{width:7px;height:7px;border-radius:99px;background:#2A3152;transition:all .3s}
+  .dot.activo{background:var(--violeta);width:18px}
   .mono{font-family:ui-monospace,monospace}
   .fila-top{display:flex;justify-content:space-between;align-items:flex-end}
   .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)}
@@ -30,9 +42,13 @@
   .barra{height:8px;border-radius:999px;overflow:hidden;background:var(--surface);margin:12px 0 20px}
   .barra>div{height:100%;border-radius:999px;background:linear-gradient(90deg,#FFB454,#FF6E9C);
     transition:width .7s ease}
-  svg{display:block;width:100%;max-width:300px;margin:0 auto}
-  .statsnum{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:8px 0 16px;text-align:center}
+  svg.radar{display:block;width:100%;max-width:300px;margin:0 auto}
+  .statsnum{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 6px;text-align:center}
   .statsnum b{font-size:14px}
+  .mini-barra{height:5px;background:#0F1322;border:1px solid #1B2138;border-radius:99px;
+    overflow:hidden;margin-top:4px}
+  .mini-barra>div{height:100%;border-radius:99px;transition:width .7s ease}
+  .hint{font-size:11px;text-align:center;color:var(--dim);margin:4px 0 14px}
   .aviso-decay{font-size:11px;text-align:center;color:#FF8C8C;margin-bottom:14px}
   .btn{border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:13px}
   .btn-ancho{display:block;width:100%;padding:10px;background:var(--surface);
@@ -89,48 +105,73 @@
   .footer-datos button{padding:9px;border-radius:10px;font-size:12px;font-weight:600;
     background:var(--surface);border:1px solid var(--line);color:var(--muted);cursor:pointer}
   .nota-datos{font-size:10px;color:var(--dim);text-align:center;margin-top:6px}
+  /* página de logros */
+  .pag-titulo{font-size:22px;font-weight:700;margin-bottom:2px}
+  .pag-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+  .sec-logros{font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);
+    margin:20px 0 10px}
+  .logro{display:flex;gap:12px;align-items:center;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .logro.on{border-color:rgba(255,215,0,.45);box-shadow:0 0 10px rgba(255,215,0,.07)}
+  .logro.off{opacity:.45}
+  .logro.oscuro{border-color:rgba(255,92,92,.4)}
+  .l-ico{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+  .l-txt{flex:1;min-width:0}
+  .l-n{font-size:13px;font-weight:600}
+  .l-d{font-size:11px;color:var(--muted)}
+  .l-p{font-size:11px;color:var(--muted);flex-shrink:0;text-align:right}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="header"></div>
-  <div id="radarwrap"></div>
-  <div id="statsnum"></div>
-  <div id="decayaviso"></div>
-  <button class="btn-ancho" onclick="toggleCal()">📅 Ver historial</button>
-  <div class="cal" id="cal"></div>
-  <div class="fila-lista">
-    <span class="lbl" id="contador"></span>
-    <button class="btn btn-add" onclick="toggleForm()">+ Hábito</button>
-  </div>
-  <div class="form" id="form">
-    <input type="text" id="f-nombre" placeholder='Ej.: "Meditar 10 min"'>
-    <div class="grupo">
-      <button class="toggle-btn" id="t-bueno" onclick="setTipo('bueno')">✦ Bueno (suma)</button>
-      <button class="toggle-btn" id="t-malo" onclick="setTipo('malo')">☠ Malo (resta)</button>
+<div class="paginas" id="paginas">
+
+  <!-- PÁGINA 1: Hoy -->
+  <section class="pagina"><div class="wrap">
+    <div id="header"></div>
+    <div id="radarwrap"></div>
+    <div id="statsnum"></div>
+    <div class="hint">Rachas, títulos y logros: desliza ◀</div>
+    <div id="decayaviso"></div>
+    <button class="btn-ancho" onclick="toggleCal()">📅 Ver historial</button>
+    <div class="cal" id="cal"></div>
+    <div class="fila-lista">
+      <span class="lbl" id="contador"></span>
+      <button class="btn btn-add" onclick="toggleForm()">+ Hábito</button>
     </div>
-    <div class="grupo" id="freq-grupo">
-      <button class="toggle-btn" id="f-diario" onclick="setFreq('diario')">Diario</button>
-      <div class="stepper">
-        <button class="toggle-btn" id="f-semanal" style="flex:1" onclick="setFreq('semanal')"></button>
-        <button class="mini" onclick="cambiaObj(-1)">−</button>
-        <button class="mini" onclick="cambiaObj(1)">+</button>
+    <div class="form" id="form">
+      <input type="text" id="f-nombre" placeholder='Ej.: "Meditar 10 min"'>
+      <div class="grupo">
+        <button class="toggle-btn" id="t-bueno" onclick="setTipo('bueno')">✦ Bueno (suma)</button>
+        <button class="toggle-btn" id="t-malo" onclick="setTipo('malo')">☠ Malo (resta)</button>
       </div>
+      <div class="grupo" id="freq-grupo">
+        <button class="toggle-btn" id="f-diario" onclick="setFreq('diario')">Diario</button>
+        <div class="stepper">
+          <button class="toggle-btn" id="f-semanal" style="flex:1" onclick="setFreq('semanal')"></button>
+          <button class="mini" onclick="cambiaObj(-1)">−</button>
+          <button class="mini" onclick="cambiaObj(1)">+</button>
+        </div>
+      </div>
+      <div class="lblmini">Afecta a (toca varias):</div>
+      <div class="cats-form" id="cats-form"></div>
+      <div class="xp-preview" id="xp-preview"></div>
+      <button class="btn-submit" onclick="addHabit()">Añadir</button>
     </div>
-    <div class="lblmini">Afecta a (toca varias):</div>
-    <div class="cats-form" id="cats-form"></div>
-    <div class="xp-preview" id="xp-preview"></div>
-    <button class="btn-submit" onclick="addHabit()">Añadir</button>
-  </div>
-  <div id="lista-buenos"></div>
-  <div id="seccion-malos"></div>
-  <div class="footer-datos">
-    <button onclick="exportar()">💾 Exportar copia</button>
-    <button onclick="document.getElementById('importfile').click()">📥 Importar copia</button>
-  </div>
-  <div class="nota-datos">Tus datos viven solo en este navegador. Exporta una copia de vez en cuando.</div>
-  <input type="file" id="importfile" accept=".json,application/json" style="display:none" onchange="importar(event)">
+    <div id="lista-buenos"></div>
+    <div id="seccion-malos"></div>
+    <div class="footer-datos">
+      <button onclick="exportar()">💾 Exportar copia</button>
+      <button onclick="document.getElementById('importfile').click()">📥 Importar copia</button>
+    </div>
+    <div class="nota-datos">Tus datos viven solo en este navegador. Exporta una copia de vez en cuando.</div>
+    <input type="file" id="importfile" accept=".json,application/json" style="display:none" onchange="importar(event)">
+  </div></section>
+
+  <!-- PÁGINA 2: Logros -->
+  <section class="pagina"><div class="wrap" id="pag-logros"></div></section>
+
 </div>
+<div class="dots"><span class="dot activo" id="dot0"></span><span class="dot" id="dot1"></span></div>
 
 <script>
 // ================= Config =================
@@ -162,6 +203,31 @@ const PRESETS = [
 ];
 const TITULOS_STAT = { cuerpo:"Titán", mente:"Erudito", disciplina:"Estratega", social:"Carismático", energia:"Dínamo" };
 
+const LOGROS = [
+  { id:"primero", n:"Primer paso", d:"Completa tu primer hábito", ico:"🌱",
+    check:c=>c.totalBuenas>=1, prog:c=>Math.min(1,c.totalBuenas)+"/1" },
+  { id:"r3", n:"En llamas", d:"Racha de 3 días en un hábito (x1.5 XP)", ico:"🔥",
+    check:c=>c.mejorRacha>=3, prog:c=>Math.min(3,c.mejorRacha)+"/3" },
+  { id:"r7", n:"Imparable", d:"Racha de 7 días (x2 XP)", ico:"⚡",
+    check:c=>c.mejorRacha>=7, prog:c=>Math.min(7,c.mejorRacha)+"/7" },
+  { id:"r30", n:"Leyenda viva", d:"Racha de 30 días en un hábito", ico:"🐉",
+    check:c=>c.mejorRacha>=30, prog:c=>Math.min(30,c.mejorRacha)+"/30" },
+  { id:"limpio7", n:"Escudo templado", d:"7 días limpio de un vicio", ico:"🛡️",
+    check:c=>c.mejorLimpio>=7, prog:c=>Math.min(7,c.mejorLimpio)+"/7" },
+  { id:"limpio30", n:"Voluntad de hierro", d:"30 días limpio de un vicio", ico:"⚔️",
+    check:c=>c.mejorLimpio>=30, prog:c=>Math.min(30,c.mejorLimpio)+"/30" },
+  { id:"cien", n:"Centurión", d:"100 hábitos completados en total", ico:"🏛️",
+    check:c=>c.totalBuenas>=100, prog:c=>Math.min(100,c.totalBuenas)+"/100" },
+  { id:"quini", n:"Imperator", d:"500 hábitos completados en total", ico:"👑",
+    check:c=>c.totalBuenas>=500, prog:c=>Math.min(500,c.totalBuenas)+"/500" },
+  { id:"nivel5", n:"Aventurero", d:"Alcanza el nivel 5", ico:"🗡️",
+    check:c=>c.nivel>=5, prog:c=>Math.min(5,c.nivel)+"/5" },
+  { id:"nivel10", n:"Veterano", d:"Alcanza el nivel 10", ico:"🏆",
+    check:c=>c.nivel>=10, prog:c=>Math.min(10,c.nivel)+"/10" },
+  { id:"nivel25", n:"Élite", d:"Alcanza el nivel 25", ico:"💎",
+    check:c=>c.nivel>=25, prog:c=>Math.min(25,c.nivel)+"/25" },
+];
+
 // ================= Estado =================
 let D = { habits:[], log:{}, meta:{} };
 try {
@@ -171,8 +237,9 @@ try {
 if (!D.habits) D.habits = [];
 if (!D.log) D.log = {};
 if (!D.meta) D.meta = {};
+if (!D.meta.logros) D.meta.logros = {};
+if (!D.meta.titulos) D.meta.titulos = {};
 
-// migración v5: renombrar "Caer (NoFap)" y eliminar psicotécnicos
 if (!D.meta.v5) {
   D.habits.forEach(h=>{ if (h.name.toLowerCase()==="caer (nofap)") h.name = "Caer"; });
   const del = new Set(D.habits.filter(h=>h.name.toLowerCase().startsWith("psicotécnicos")).map(h=>h.id));
@@ -185,7 +252,6 @@ if (!D.meta.v5) {
   }
   D.meta.v5 = true;
 }
-// sembrar presets que falten (flag nuevo para que entren los sociales)
 if (!D.meta.seeded5) {
   const exist = new Set(D.habits.map(h=>h.name.toLowerCase()));
   PRESETS.forEach((p,i)=>{
@@ -210,17 +276,16 @@ function xpNivel(l){ return Math.pow(l-1,2)*25; }
 function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function cat(id){ return CATS.find(c=>c.id===id); }
 function multDeRun(run){ return run>=7 ? 2 : run>=3 ? 1.5 : 1; }
+function fechasDe(id){ return Object.keys(D.log).filter(f=>D.log[f].includes(id)).sort(); }
 
 // ================= Cálculos =================
-// multiplicador histórico por hábito y fecha (solo buenos diarios)
 function mapaMults(){
   const m = {};
   for (const h of D.habits){
     if (h.tipo!=="bueno" || h.freq.tipo!=="diario") continue;
-    const fechas = Object.keys(D.log).filter(f=>D.log[f].includes(h.id)).sort();
     let run = 0, prev = null;
     const mm = {};
-    for (const f of fechas){
+    for (const f of fechasDe(h.id)){
       run = (prev && difDias(prev,f)===1) ? run+1 : 1;
       mm[f] = multDeRun(run);
       prev = f;
@@ -230,15 +295,41 @@ function mapaMults(){
   return m;
 }
 
+function recordRacha(id){
+  let mejor=0, run=0, prev=null;
+  for (const f of fechasDe(id)){
+    run = (prev && difDias(prev,f)===1) ? run+1 : 1;
+    if (run>mejor) mejor=run;
+    prev=f;
+  }
+  return mejor;
+}
+
+function limpios(h){
+  const fechas = fechasDe(h.id);
+  const F = hoy();
+  if (!fechas.length){
+    const d = Math.max(0, difDias(h.createdAt, F));
+    return { actual:d, record:d };
+  }
+  let record = Math.max(0, difDias(h.createdAt, fechas[0]));
+  for (let i=1;i<fechas.length;i++)
+    record = Math.max(record, difDias(fechas[i-1], fechas[i])-1);
+  const actual = Math.max(0, difDias(fechas[fechas.length-1], F));
+  record = Math.max(record, actual);
+  return { actual, record };
+}
+
 function calcular(){
   const mults = mapaMults();
   const xpCat = {}; CATS.forEach(c=>xpCat[c.id]=0);
   const ultAct = {}; CATS.forEach(c=>ultAct[c.id]=null);
-  let xpTotal = 0;
+  let xpTotal = 0, totalBuenas = 0;
   for (const f of Object.keys(D.log)){
     for (const hid of D.log[f]){
       const h = D.habits.find(x=>x.id===hid);
       if (!h) continue;
+      if (h.tipo==="bueno") totalBuenas++;
       const delta = h.tipo==="malo" ? -XP_NEG : XP_POS * ((mults[h.id]||{})[f]||1);
       for (const c of h.cats){
         if (xpCat[c]===undefined) continue;
@@ -259,7 +350,7 @@ function calcular(){
     decayendo.push(dec);
     return statValor(xp);
   });
-  return { valores, decayendo, xpTotal: Math.round(xpTotal) };
+  return { valores, decayendo, xpTotal: Math.round(xpTotal), totalBuenas };
 }
 
 function racha(id){
@@ -267,11 +358,6 @@ function racha(id){
   let r=0, i=(D.log[F]||[]).includes(id)?0:1;
   while (i<=365){ const f=diasAtras(i); if((D.log[f]||[]).includes(id)){r++;i++;} else break; }
   return r;
-}
-function diasLimpio(h){
-  let ult=null;
-  for (const f of Object.keys(D.log)) if (D.log[f].includes(h.id)&&(!ult||f>ult)) ult=f;
-  return Math.max(0, difDias(ult||h.createdAt, hoy()));
 }
 function vecesSemana(id){
   const lun=lunesSemana(), F=hoy(); let n=0;
@@ -297,7 +383,6 @@ function borrarHabit(id){
   guardar(); render();
 }
 
-// ---- exportar / importar ----
 function exportar(){
   const blob = new Blob([JSON.stringify(D,null,2)],{type:"application/json"});
   const a = document.createElement("a");
@@ -319,6 +404,8 @@ function importar(ev){
       if (!confirm("Esto reemplazará tus datos actuales por los de la copia. ¿Continuar?")) return;
       D = d;
       if (!D.meta) D.meta = {};
+      if (!D.meta.logros) D.meta.logros = {};
+      if (!D.meta.titulos) D.meta.titulos = {};
       guardar(); render();
       alert("Copia importada correctamente ✔");
     }catch(e){ alert("El archivo no es una copia válida."); }
@@ -327,7 +414,6 @@ function importar(ev){
   ev.target.value = "";
 }
 
-// ---- formulario ----
 let fTipo="bueno", fFreq="diario", fObj=3, fCats=["disciplina"];
 function toggleForm(){ document.getElementById("form").classList.toggle("abierto"); renderForm(); }
 function setTipo(t){ fTipo=t; renderForm(); }
@@ -352,7 +438,6 @@ function addHabit(){
   guardar(); render();
 }
 
-// ---- calendario ----
 let calAbierto=false, calMes=new Date().getMonth(), calAnio=new Date().getFullYear();
 function toggleCal(){ calAbierto=!calAbierto; document.getElementById("cal").classList.toggle("abierto",calAbierto); renderCal(); }
 function navCal(d){
@@ -366,7 +451,7 @@ function radarSVG(valores, decayendo){
   const size=280, cx=140, cy=140, R=100, n=CATS.length;
   const ang=i=>Math.PI*2*i/n-Math.PI/2;
   const pt=(i,r)=>[cx+r*Math.cos(ang(i)), cy+r*Math.sin(ang(i))];
-  let s=`<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+  let s=`<svg class="radar" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0%" stop-color="#7C5CFF" stop-opacity=".85"/>
     <stop offset="100%" stop-color="#4ED6FF" stop-opacity=".85"/></linearGradient></defs>`;
@@ -448,8 +533,7 @@ function filaHabito(h){
   const color = malo ? "#FF5C5C" : cat(h.cats[0]).color;
   const sem = vecesSemana(h.id);
   const corona = semanal && sem>=h.freq.objetivo;
-  const r = malo ? diasLimpio(h) : racha(h.id);
-  // multiplicador vigente (el que aplica/aplicaría la marca de hoy)
+  const r = malo ? limpios(h).actual : racha(h.id);
   const mult = (!malo && !semanal) ? multDeRun(done ? r : r+1) : 1;
   let extra = "";
   if (malo) extra = done ? '<span style="color:#FF5C5C">hoy has caído</span>'
@@ -481,8 +565,81 @@ function filaHabito(h){
   </div>`;
 }
 
+// ---- página de logros ----
+function renderLogros(ctx){
+  const fechaCorta = f => new Date(f).toLocaleDateString("es",{day:"numeric",month:"short"});
+
+  // rachas
+  let rachasHTML = "";
+  for (const h of D.habits){
+    let icoTxt, valTxt;
+    if (h.tipo==="malo"){
+      const l = limpios(h);
+      icoTxt = "🛡️";
+      valTxt = `<b style="color:#5EF0A0">${l.actual}</b> días limpio · récord <b>${l.record}</b>`;
+    } else if (h.freq.tipo==="semanal"){
+      const total = fechasDe(h.id).length;
+      icoTxt = "📅";
+      valTxt = `<b style="color:#FFD700">${vecesSemana(h.id)}/${h.freq.objetivo}</b> esta semana · ${total} en total`;
+    } else {
+      const rec = recordRacha(h.id);
+      icoTxt = "🔥";
+      valTxt = `<b style="color:#FFB454">${racha(h.id)}</b> días · récord <b>${rec}</b>`;
+    }
+    rachasHTML += `<div class="logro">
+      <div class="l-ico">${icoTxt}</div>
+      <div class="l-txt"><div class="l-n">${esc(h.name)}</div></div>
+      <div class="l-p">${valTxt}</div>
+    </div>`;
+  }
+
+  // títulos
+  const catalogoTitulos = [
+    ...CATS.map(c=>({n:TITULOS_STAT[c.id], d:`Haz que ${c.name} domine tu polígono`, ico:"⬟", color:c.color})),
+    {n:"Pentágono Perfecto", d:"Las 5 stats a ≥30 y en equilibrio", ico:"⬠", color:"#FFD700"},
+    ...D.habits.filter(h=>h.tipo==="bueno"&&h.freq.tipo==="semanal").map(h=>({
+      n:h.titulo||("Maestro: "+h.name), d:`${h.name} · ${h.freq.objetivo}x/semana`, ico:"👑", color:"#FFD700"})),
+    {n:"Corrompido", d:"3+ caídas en vicios en una semana · título oscuro", ico:"💀", color:"#FF5C5C", oscuro:true},
+  ];
+  let titulosHTML = catalogoTitulos.map(t=>{
+    const fecha = D.meta.titulos[t.n];
+    const on = !!fecha;
+    return `<div class="logro ${on?(t.oscuro?"oscuro":"on"):"off"}">
+      <div class="l-ico" style="color:${t.color}">${t.ico}</div>
+      <div class="l-txt">
+        <div class="l-n" style="${on?`color:${t.color}`:""}">${esc(t.n)}</div>
+        <div class="l-d">${esc(t.d)}</div>
+      </div>
+      <div class="l-p">${on?fechaCorta(fecha):"🔒"}</div>
+    </div>`;
+  }).join("");
+
+  // logros
+  let logrosHTML = LOGROS.map(l=>{
+    const fecha = D.meta.logros[l.id];
+    const on = !!fecha;
+    return `<div class="logro ${on?"on":"off"}">
+      <div class="l-ico">${l.ico}</div>
+      <div class="l-txt">
+        <div class="l-n" style="${on?"color:#FFD700":""}">${l.n}</div>
+        <div class="l-d">${l.d}</div>
+      </div>
+      <div class="l-p">${on?fechaCorta(fecha):l.prog(ctx)}</div>
+    </div>`;
+  }).join("");
+
+  const nLogros = Object.keys(D.meta.logros).length;
+  const nTitulos = Object.keys(D.meta.titulos).length;
+  document.getElementById("pag-logros").innerHTML = `
+    <div class="pag-titulo">Sala de trofeos</div>
+    <div class="pag-sub">${nLogros}/${LOGROS.length} logros · ${nTitulos}/${catalogoTitulos.length} títulos</div>
+    <div class="sec-logros">🔥 Rachas</div>${rachasHTML}
+    <div class="sec-logros">👑 Títulos</div>${titulosHTML}
+    <div class="sec-logros">🏆 Logros</div>${logrosHTML}`;
+}
+
 function render(){
-  const { valores, decayendo, xpTotal } = calcular();
+  const { valores, decayendo, xpTotal, totalBuenas } = calcular();
   const nivel = nivelDe(xpTotal);
   const base = xpNivel(nivel), sig = xpNivel(nivel+1);
   const prog = sig>base ? (xpTotal-base)/(sig-base) : 0;
@@ -497,6 +654,18 @@ function render(){
 
   const coronas = D.habits.filter(h=>h.tipo==="bueno"&&h.freq.tipo==="semanal"&&vecesSemana(h.id)>=h.freq.objetivo)
     .map(h=>h.titulo||("Maestro: "+h.name));
+
+  // registrar títulos y logros conseguidos (permanentes)
+  const F = hoy();
+  if (tit.n!=="Novato" && !D.meta.titulos[tit.n]) D.meta.titulos[tit.n]=F;
+  coronas.forEach(t=>{ if(!D.meta.titulos[t]) D.meta.titulos[t]=F; });
+  const ctx = {
+    totalBuenas, nivel,
+    mejorRacha: Math.max(0, ...D.habits.filter(h=>h.tipo==="bueno"&&h.freq.tipo==="diario").map(h=>recordRacha(h.id))),
+    mejorLimpio: Math.max(0, ...D.habits.filter(h=>h.tipo==="malo").map(h=>limpios(h).record)),
+  };
+  LOGROS.forEach(l=>{ if(l.check(ctx) && !D.meta.logros[l.id]) D.meta.logros[l.id]=F; });
+  guardar();
 
   document.getElementById("header").innerHTML = `
     <div class="fila-top">
@@ -514,14 +683,17 @@ function render(){
     <div class="barra"><div style="width:${Math.round(prog*100)}%"></div></div>`;
 
   document.getElementById("radarwrap").innerHTML = radarSVG(valores, decayendo);
-  document.getElementById("statsnum").innerHTML = CATS.map((c,i)=>
-    `<div><b class="mono" style="color:${c.color}">${valores[i]}${decayendo[i]?'<span style="color:#FF5C5C">▼</span>':""}</b></div>`).join("");
+  document.getElementById("statsnum").innerHTML = CATS.map((c,i)=>`
+    <div>
+      <b class="mono" style="color:${c.color}">${valores[i]}${decayendo[i]?'<span style="color:#FF5C5C">▼</span>':""}</b>
+      <div class="mini-barra"><div style="width:${valores[i]}%;background:${c.color}"></div></div>
+    </div>`).join("");
   document.getElementById("decayaviso").innerHTML = decayendo.some(Boolean)
     ? `<div class="aviso-decay">▼ Stats decayendo: más de ${DECAY_GRACIA} días sin actividad en esa categoría</div>` : "";
 
   const buenos = D.habits.filter(h=>h.tipo==="bueno");
   const malos = D.habits.filter(h=>h.tipo==="malo");
-  const F=hoy(), hechos=(D.log[F]||[]).filter(id=>buenos.some(b=>b.id===id)).length;
+  const hechos=(D.log[F]||[]).filter(id=>buenos.some(b=>b.id===id)).length;
   document.getElementById("contador").textContent = `Hoy · ${hechos}/${buenos.length}`;
   document.getElementById("lista-buenos").innerHTML =
     buenos.length ? buenos.map(filaHabito).join("") : '<div class="vacio">Aún no hay hábitos. Pulsa <b>+ Hábito</b>.</div>';
@@ -529,7 +701,16 @@ function render(){
     ? `<div class="seccion-mal">☠ Vicios · solo marca si caes</div>` + malos.map(filaHabito).join("") : "";
 
   renderCal();
+  renderLogros(ctx);
 }
+
+// indicador de página
+const pagEl = document.getElementById("paginas");
+pagEl.addEventListener("scroll", ()=>{
+  const p = Math.round(pagEl.scrollLeft / pagEl.clientWidth);
+  document.getElementById("dot0").classList.toggle("activo", p===0);
+  document.getElementById("dot1").classList.toggle("activo", p===1);
+});
 
 renderForm();
 render();
