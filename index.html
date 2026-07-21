@@ -1010,7 +1010,7 @@ render();
       '<div class="ag-wnav">'+
         '<button class="ag-wbtn" data-w="-1">◀</button>'+
         '<div class="ag-wttl"><b>'+(semanaOffset===0?'Esta semana':rango)+'</b>'+
-          '<span>'+(semanaOffset===0?rango:'')+(semanaOffset!==0?'<button class="ag-whoy" data-w="0">volver a hoy</button>':' · '+nTareas+' tareas')+'</span></div>'+
+          '<span>'+(semanaOffset===0?rango+' · ':'')+nTareas+' tareas</span></div>'+
         '<button class="ag-wbtn" data-w="1">▶</button>'+
       '</div>';
 
@@ -1113,18 +1113,15 @@ render();
     const host = document.getElementById('pag-agenda'); if(!host) return;
     host.innerHTML =
       '<div class="ag-h1">◆ Agenda</div>'+
-      '<div class="ag-sub">Dicta lo que tengas que hacer · calendario semanal</div>'+
       '<div class="ag-cap">'+
         '<label>Nueva entrada</label>'+
         '<div class="ag-bar">'+
-          '<textarea id="ag-texto" rows="1" placeholder="Toca aquí, pulsa el 🎤 del teclado y habla…"></textarea>'+
+          '<textarea id="ag-texto" rows="1"></textarea>'+
           '<button id="ag-add" aria-label="Añadir">＋</button>'+
         '</div>'+
-        '<div class="ag-tip"><b>Ej.:</b> "cada lunes reunión a las 9" · "el jueves dentista a las 5 y media"</div>'+
         '<div id="ag-preview"></div>'+
       '</div>'+
-      '<div class="ag-list" id="ag-sem"></div>'+
-      '<div class="ag-back">Inicio ▶</div>';
+      '<div class="ag-list" id="ag-sem"></div>';
     const ta = document.getElementById('ag-texto');
     ta.addEventListener('input', ()=>{ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,140)+'px'; });
     document.getElementById('ag-add').addEventListener('click', ()=>{
@@ -1133,7 +1130,7 @@ render();
     });
     document.getElementById('ag-sem').addEventListener('click', (e)=>{
       const w = e.target.closest('[data-w]');
-      if(w){ const v=w.dataset.w; semanaOffset = (v==='0') ? 0 : semanaOffset + (+v); renderAgenda(); return; }
+      if(w){ semanaOffset += (+w.dataset.w); renderAgenda(); return; }
       const cal = e.target.closest('[data-cal]'); const del = e.target.closest('[data-del]');
       if(cal){ const ev=(D.eventos||[]).find(x=>x.id===cal.dataset.cal); if(ev) exportICS(ev); }
       if(del){ delEvento(del.dataset.del); }
