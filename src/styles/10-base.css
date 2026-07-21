@@ -1,0 +1,95 @@
+  :root{
+    --bg:#0A0C16; --surface:#131830; --line:#232A4A; --txt:#E8EAF6;
+    --muted:#8B93B8; --dim:#5A6285; --oro:#FFD700; --rojo:#FF5C5C;
+    --ambar:#FFB454; --violeta:#7C5CFF; --cian:#4ED6FF; --verde:#5EF0A0; --rosa:#FF6E9C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;overflow:hidden}
+  .paginas{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .paginas::-webkit-scrollbar{display:none}
+  .pagina{min-width:100%;height:100%;overflow-y:auto;scroll-snap-align:start;scroll-snap-stop:always;
+    padding:max(16px,env(safe-area-inset-top)) 16px 110px}
+  .wrap{max-width:430px;margin:0 auto}
+  .dots{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:0;right:0;
+    display:flex;justify-content:center;gap:6px;pointer-events:none;z-index:10}
+  .dot{width:7px;height:7px;border-radius:99px;background:#2A3152;transition:all .3s}
+  .dot.activo{background:var(--violeta);width:18px}
+  .mono{font-family:ui-monospace,monospace}
+  .fila-top{display:flex;justify-content:space-between;align-items:flex-end}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)}
+  .titulo{font-size:24px;font-weight:700;line-height:1.2}
+  .desc{font-size:12px;color:var(--muted)}
+  .xp{font-size:18px;color:var(--ambar)}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .chip{font-size:11px;padding:4px 8px;border-radius:999px;font-weight:600;
+    background:rgba(255,215,0,.13);color:var(--oro);border:1px solid rgba(255,215,0,.33)}
+  .barra{height:8px;border-radius:999px;overflow:hidden;background:var(--surface);margin:12px 0 20px}
+  .barra>div{height:100%;border-radius:999px;background:linear-gradient(90deg,#FFB454,#FF6E9C);
+    transition:width .7s ease}
+  svg.radar{display:block;width:100%;max-width:300px;margin:0 auto}
+  .statsnum{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 6px;text-align:center}
+  .statsnum b{font-size:14px}
+  .mini-barra{height:5px;background:#0F1322;border:1px solid #1B2138;border-radius:99px;
+    overflow:hidden;margin-top:4px}
+  .mini-barra>div{height:100%;border-radius:99px;transition:width .7s ease}
+  .hint{font-size:11px;text-align:center;color:var(--dim);margin:4px 0 14px}
+  .aviso-decay{font-size:11px;text-align:center;color:#FF8C8C;margin-bottom:14px}
+  .btn{border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn-ancho{display:block;width:100%;padding:10px;background:var(--surface);
+    border:1px solid var(--line);color:var(--muted);margin-bottom:12px;border-radius:12px;
+    font-weight:600;font-size:13px;cursor:pointer}
+  .fila-lista{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px}
+  .btn-add{background:var(--violeta);color:#fff;padding:6px 12px;border-radius:10px}
+  .habito{display:flex;align-items:center;gap:10px;border-radius:12px;padding:11px 12px;
+    background:var(--surface);border:1px solid var(--line);margin-bottom:8px}
+  .check{width:28px;height:28px;border-radius:8px;border:2px solid;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-weight:700;
+    background:transparent;color:#0A0C16;font-size:14px}
+  .h-info{flex:1;min-width:0}
+  .h-nombre{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .h-meta{font-size:11px;display:flex;flex-wrap:wrap;gap:0 8px}
+  .h-xp{font-size:11px;flex-shrink:0;color:var(--muted)}
+  .h-del{background:none;border:none;color:var(--dim);font-size:12px;padding:2px 4px;cursor:pointer}
+  .seccion-mal{font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--rojo);
+    margin:22px 0 10px}
+  .form{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:12px;margin-bottom:14px;display:none}
+  .form.abierto{display:block}
+  .form input[type=text]{width:100%;background:var(--bg);border:1px solid var(--line);
+    border-radius:8px;color:var(--txt);padding:9px 10px;font-size:14px;outline:none;margin-bottom:8px}
+  .grupo{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px}
+  .toggle-btn{padding:8px;border-radius:8px;font-size:12px;font-weight:600;
+    background:transparent;border:1px solid;cursor:pointer}
+  .form .lblmini{font-size:11px;color:var(--muted);margin:4px 0}
+  .cats-form{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .cat-chip{font-size:11px;padding:4px 8px;border-radius:8px;font-weight:600;
+    background:transparent;border:1px solid;cursor:pointer}
+  .xp-preview{font-size:11px;text-align:right;color:var(--muted);margin-bottom:8px}
+  .btn-submit{width:100%;padding:10px;background:var(--cian);color:#0A0C16;
+    border-radius:8px;font-weight:700}
+  .stepper{display:flex;gap:4px;align-items:stretch}
+  .stepper .mini{width:30px;background:var(--bg);border:1px solid var(--line);
+    color:var(--txt);border-radius:8px;font-weight:700;cursor:pointer}
+  .vacio{text-align:center;padding:36px 0;font-size:13px;color:var(--muted)}
+  .footer-datos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:24px}
+  .footer-datos button{padding:9px;border-radius:10px;font-size:12px;font-weight:600;
+    background:var(--surface);border:1px solid var(--line);color:var(--muted);cursor:pointer}
+  .nota-datos{font-size:10px;color:var(--dim);text-align:center;margin-top:6px}
+  /* página de logros */
+  .pag-titulo{font-size:22px;font-weight:700;margin-bottom:2px}
+  .pag-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+  .sec-logros{font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);
+    margin:20px 0 10px}
+  .logro{display:flex;gap:12px;align-items:center;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .logro.on{border-color:rgba(255,215,0,.45);box-shadow:0 0 10px rgba(255,215,0,.07)}
+  .logro.off{opacity:.45}
+  .logro.oscuro{border-color:rgba(255,92,92,.4)}
+  .l-ico{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+  .l-txt{flex:1;min-width:0}
+  .l-n{font-size:13px;font-weight:600}
+  .l-d{font-size:11px;color:var(--muted)}
+  .l-p{font-size:11px;color:var(--muted);flex-shrink:0;text-align:right}
+

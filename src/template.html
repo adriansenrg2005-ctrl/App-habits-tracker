@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0C16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hábitos">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<title>Hábitos RPG</title>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div class="paginas" id="paginas">
+
+  <!-- PÁGINA 0: Agenda / Voz -->
+  <section class="pagina"><div class="wrap" id="pag-agenda"></div></section>
+
+  <!-- PÁGINA 1: Hoy -->
+  <section class="pagina"><div class="wrap">
+    <div id="header"></div>
+    <div id="radarwrap"></div>
+    <div id="statsnum"></div>
+    <div class="hint">◀ Agenda&nbsp;&nbsp;·&nbsp;&nbsp;Rachas y logros ▶</div>
+    <div id="decayaviso"></div>
+    <div class="fila-lista">
+      <span class="lbl" id="contador"></span>
+      <button class="btn btn-add" onclick="toggleForm()">+ Hábito</button>
+    </div>
+    <div class="form" id="form">
+      <input type="text" id="f-nombre" placeholder='Ej.: "Meditar 10 min"'>
+      <div class="grupo">
+        <button class="toggle-btn" id="t-bueno" onclick="setTipo('bueno')">✦ Bueno (suma)</button>
+        <button class="toggle-btn" id="t-malo" onclick="setTipo('malo')">☠ Malo (resta)</button>
+      </div>
+      <div class="grupo" id="freq-grupo">
+        <button class="toggle-btn" id="f-diario" onclick="setFreq('diario')">Diario</button>
+        <div class="stepper">
+          <button class="toggle-btn" id="f-semanal" style="flex:1" onclick="setFreq('semanal')"></button>
+          <button class="mini" onclick="cambiaObj(-1)">−</button>
+          <button class="mini" onclick="cambiaObj(1)">+</button>
+        </div>
+      </div>
+      <div class="lblmini">Afecta a (toca varias):</div>
+      <div class="cats-form" id="cats-form"></div>
+      <div class="xp-preview" id="xp-preview"></div>
+      <button class="btn-submit" onclick="addHabit()">Añadir</button>
+    </div>
+    <div id="lista-buenos"></div>
+    <div id="seccion-malos"></div>
+    <div class="footer-datos">
+      <button onclick="exportar()">💾 Exportar copia</button>
+      <button onclick="document.getElementById('importfile').click()">📥 Importar copia</button>
+    </div>
+    <div class="nota-datos">Tus datos viven solo en este navegador. Exporta una copia de vez en cuando.</div>
+    <input type="file" id="importfile" accept=".json,application/json" style="display:none" onchange="importar(event)">
+  </div></section>
+
+  <!-- PÁGINA 2: Logros -->
+  <section class="pagina"><div class="wrap" id="pag-logros"></div></section>
+
+</div>
+<div class="dots"><span class="dot" id="dot0"></span><span class="dot activo" id="dot1"></span><span class="dot" id="dot2"></span></div>
+
+<script>
+//__JS__
+</script>
+</body>
+</html>
