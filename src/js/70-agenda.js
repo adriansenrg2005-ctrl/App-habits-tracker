@@ -71,6 +71,32 @@
     return {h, m:min, matched};
   }
 
+  function toHM(hp){
+    let mm = hp.match(/^(\d{1,2})[:h\.](\d{2})$/);
+    if(mm) return {h:+mm[1], m:+mm[2]};
+    if(/^\d+$/.test(hp)) return {h:+hp, m:0};
+    const n = wordToNum(hp); return n==null ? null : {h:n, m:0};
+  }
+
+  // "de 10:30 a 12:00", "de 10 a 12", "10:30 - 12:00" -> hora inicio + duración
+  function extractRange(t){
+    const numWord = 'una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce';
+    const H = '(\\d{1,2}(?:[:h\\.]\\d{2})?|'+numWord+')';
+    const FR = '(\\s+de\\s+la\\s+(?:mañana|tarde|noche|madrugada))?';
+    let m = t.match(new RegExp('\\bde\\s+(?:las?\\s+)?'+H+'\\s+(?:a|hasta)\\s+(?:las?\\s+)?'+H+FR,'i'));
+    if(!m) m = t.match(new RegExp('\\b'+H+'\\s*[-–—]\\s*'+H+FR,'i'));
+    if(!m) return null;
+    const p1 = toHM(m[1]), p2 = toHM(m[2]);
+    if(!p1 || !p2) return null;
+    let h1=p1.h, h2=p2.h;
+    const fr = m[3]||'';
+    if(/tarde|noche/.test(fr)){ if(h1<12) h1+=12; if(h2<12) h2+=12; }
+    let start = h1*60+p1.m, end = h2*60+p2.m;
+    if(end<=start) end += 12*60;                    // "de 11 a 1" -> 11:00-13:00
+    if(end<=start) return null;
+    return {h:h1, m:p1.m, dur:end-start, matched:m[0]};
+  }
+
   function extractDate(t, now){
     const mk = (off)=>{ const d=new Date(now); d.setHours(0,0,0,0); d.setDate(d.getDate()+off); return d; };
     let m = t.match(/\b(dentro\s+de|en)\s+(\d+|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|media)\s+(minutos?|horas?|d[ií]as?|semanas?|mes(?:es)?)\b/);
@@ -135,11 +161,11 @@
   }
 
   function cleanTitle(t, removals){
-    let s = ' ' + t + ' ';
+    let s = ' ' + t.toLowerCase() + ' ';
     removals.filter(Boolean).sort((a,b)=>b.length-a.length).forEach(r=>{ s = s.split(r).join(' '); });
-    s = s.replace(/^\s*(recu[eé]rda(me)?|recu[eé]rda|recordar|no\s+olvides?(\s+de)?|ap[uú]nta(me)?|an[oó]ta(me)?|a[ñn]ade|agrega|pon(me)?|crea|programa|nuevo\s+evento|evento|recordatorio|tarea)\s+/i,' ');
-    s = s.replace(/^\s*(que|de|a|el|la)\s+/i,' ');
-    s = s.replace(/\b(a\s+las?|el|los|este|pr[oó]ximo|de\s+la)\s*$/i,' ');
+    s = s.replace(/^\s*(recu[eé]rda(me)?|recu[eé]rda|recordar|no\s+olvides?(\s+de)?|ap[uú]nta(me)?|an[oó]ta(me)?|a[ñn]ade|agrega|pon(me)?|crea|programa|nuevo\s+evento|evento|recordatorio|tarea|quiero|tengo\s+que|hay\s+que|voy\s+a|me\s+gustar[ií]a)\s+/i,' ');
+    for(let i=0;i<3;i++) s = s.replace(/^\s*(que|de|ir|a|al|el|la|los|las|un|una)\s+/i,' ');
+    s = s.replace(/\b(a\s+las?|el|los|este|pr[oó]ximo|de\s+la|de|a|al)\s*$/i,' ');
     s = s.replace(/\s+/g,' ').trim();
     s = s.replace(/[,;.\s]+$/,'').replace(/^[,;.\s]+/,'');
     if(!s) return 'Recordatorio';
@@ -150,7 +176,7 @@
     now = now || new Date();
     const t = input.toLowerCase();
     const rec  = extractRecurrence(t);
-    const time = extractTime(t);
+    const time = extractRange(t) || extractTime(t);
     let   dInfo = extractDate(t, now);
     if(rec && rec.type==='weekly' && rec.dow!=null && !dInfo){
       let delta = (rec.dow - now.getDay() + 7) % 7; if(delta===0) delta = 7;
@@ -171,7 +197,7 @@
       if(rec.type==='daily') recurrence = {type:'daily'};
       else if(rec.type==='weekly') recurrence = {type:'weekly', dow: rec.dow!=null?rec.dow:date.getDay()};
     }
-    return { title, date, hasTime, recurrence, raw: input };
+    return { title, date, hasTime, recurrence, dur: (time && time.dur) || null, raw: input };
   }
 
   /* ---------- helpers ---------- */
@@ -210,7 +236,8 @@
     if(!D.eventos) D.eventos=[];
     D.eventos.push({
       id: Date.now()+''+Math.floor(Math.random()*1000),
-      title: ev.title, ts: ev.date.getTime(), hasTime: ev.hasTime, recurrence: ev.recurrence||null
+      title: ev.title, ts: ev.date.getTime(), hasTime: ev.hasTime,
+      dur: ev.dur||null, recurrence: ev.recurrence||null
     });
     D.eventos.sort((a,b)=>a.ts-b.ts);
     guardar(); renderAgenda(); scheduleLocal();
@@ -234,8 +261,9 @@
     let L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Habitos RPG//Agenda//ES','CALSCALE:GREGORIAN',
       'BEGIN:VEVENT','UID:'+e.id+'@habitos-agenda','DTSTAMP:'+dtstamp];
     if(e.hasTime){
-      L.push('DTSTART:'+icsLocal(start), 'DTEND:'+icsLocal(new Date(e.ts+30*60000)));
-      L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+escapeICS(e.title),'TRIGGER:PT0M','END:VALARM');
+      const durMin = e.dur || 30;
+      L.push('DTSTART:'+icsLocal(start), 'DTEND:'+icsLocal(new Date(e.ts+durMin*60000)));
+      L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+escapeICS(e.title),'TRIGGER:-PT30M','END:VALARM');
     } else {
       L.push('DTSTART;VALUE=DATE:'+icsDate(start));
       L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+escapeICS(e.title),'TRIGGER:PT9H','END:VALARM');
@@ -264,8 +292,9 @@
     timers.forEach(clearTimeout); timers = [];
     if(!('Notification' in window) || Notification.permission!=='granted') return;
     const now = Date.now();
-    (D.eventos||[]).filter(e=>e.hasTime && e.ts>now && e.ts-now < 24*3600000).forEach(e=>{
-      timers.push(setTimeout(()=>{ try{ new Notification('◆ '+e.title, {body:'Es la hora.'}); }catch(_){} }, e.ts-now));
+    (D.eventos||[]).filter(e=>e.hasTime && e.ts-30*60000>now && e.ts-now < 24*3600000).forEach(e=>{
+      const hh = new Date(e.ts);
+      timers.push(setTimeout(()=>{ try{ new Notification('◆ '+e.title, {body:'En 30 min · '+pad(hh.getHours())+':'+pad(hh.getMinutes())}); }catch(_){} }, e.ts-30*60000-now));
     });
   }
   function askNotif(){
@@ -276,6 +305,66 @@
 
   /* ---------- vista semanal ---------- */
   let semanaOffset = 0;
+
+  function fmtDur(min){
+    if(!min) return '';
+    if(min<60) return min+' min';
+    if(min===60) return '1 hora';
+    if(min%30===0) return (min/60)+' horas';
+    return Math.floor(min/60)+'h '+(min%60)+'min';
+  }
+  function evNombre(e){
+    return '<span class="nm">'+agEsc(e.title)+(e.dur?'<span class="dur"> '+fmtDur(e.dur)+'</span>':'')+'</span>';
+  }
+  function horaRango(o){
+    const ini = new Date(o.ts);
+    let s = pad(ini.getHours())+':'+pad(ini.getMinutes());
+    if(o.ev.dur){ const f = new Date(o.ts + o.ev.dur*60000); s += ' – '+pad(f.getHours())+':'+pad(f.getMinutes()); }
+    return s;
+  }
+
+  /* ---------- vista de día (modal) ---------- */
+  function openDia(k){
+    const parts = k.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    const {res} = ocurrenciasSemana(lunesDe(d));
+    const evs = res[k] || [];
+    const marcas = (D.log[k]||[]).length;
+    let rows = '';
+    if(evs.length===0) rows = '<div class="ag-libre" style="padding:14px 0">Sin tareas este día</div>';
+    evs.forEach(o=>{
+      const e = o.ev;
+      const rep = e.recurrence ? ' rep':'';
+      const col = e.hasTime ? '<span class="t">'+horaRango(o)+'</span>' : '<span class="ad">todo el día</span>';
+      const bg = e.recurrence ? '<span class="bg">↻</span>' : '';
+      rows += '<div class="ag-ev'+rep+' grande">'+col+evNombre(e)+bg+
+        '<span class="ac">'+
+          '<button class="ag-ib" data-cal="'+e.id+'">📅</button>'+
+          '<button class="ag-ib" data-del="'+e.id+'">✕</button>'+
+        '</span></div>';
+    });
+    let ovl = document.getElementById('ag-ovl');
+    if(!ovl){ ovl=document.createElement('div'); ovl.id='ag-ovl'; ovl.className='ag-ovl'; document.body.appendChild(ovl);
+      ovl.addEventListener('click',(e)=>{
+        if(e.target===ovl || e.target.closest('#ag-mclose')){ closeDia(); return; }
+        const cal = e.target.closest('[data-cal]'); const del = e.target.closest('[data-del]');
+        if(cal){ const ev=(D.eventos||[]).find(x=>x.id===cal.dataset.cal); if(ev) exportICS(ev); }
+        if(del){ delEvento(del.dataset.del); openDia(ovl.dataset.k); }
+      });
+    }
+    ovl.dataset.k = k;
+    ovl.innerHTML =
+      '<div class="ag-modal">'+
+        '<div class="ag-mhdr">'+
+          '<div><b>'+DOW_NAME[d.getDay()].toUpperCase()+' '+d.getDate()+'</b>'+
+          '<span>'+MONTH_NAME[d.getMonth()]+' · '+evs.length+' '+(evs.length===1?'tarea':'tareas')+
+          (marcas?' · <em style="color:var(--verde);font-style:normal">✦ '+marcas+' hábitos</em>':'')+'</span></div>'+
+          '<button class="ag-ib" id="ag-mclose">✕</button>'+
+        '</div>'+rows+
+      '</div>';
+    ovl.classList.add('open');
+  }
+  function closeDia(){ const o=document.getElementById('ag-ovl'); if(o) o.classList.remove('open'); }
 
   function renderAgenda(){
     const el = document.getElementById('ag-sem'); if(!el) return;
@@ -304,11 +393,12 @@
       const pasado = d < hoy0;
       const marcas = (D.log[k]||[]).length;                 // actividad de hábitos ese día
       html += '<div class="ag-dia'+(esHoy?' hoy':'')+(pasado?' pasado':'')+'">'+
-        '<div class="ag-dhdr">'+
+        '<div class="ag-dhdr" data-dia="'+k+'">'+
           '<span class="ag-ddw">'+DOW_SHORT[d.getDay()]+'</span>'+
           '<span class="ag-dnum">'+d.getDate()+'</span>'+
           (esHoy?'<span class="ag-dtag">hoy</span>':'')+
           (marcas?'<span class="ag-dhab" title="hábitos completados">✦ '+marcas+'</span>':'')+
+          '<span class="ag-dver">›</span>'+
         '</div>';
       if(evs.length===0){
         html += '<div class="ag-libre">—</div>';
@@ -320,8 +410,7 @@
             ? '<span class="t">'+pad(new Date(o.ts).getHours())+':'+pad(new Date(o.ts).getMinutes())+'</span>'
             : '<span class="ad">día</span>';
           const bg = e.recurrence ? '<span class="bg">↻</span>' : '';
-          html += '<div class="ag-ev'+rep+'">'+col+
-            '<span class="nm">'+agEsc(e.title)+'</span>'+bg+
+          html += '<div class="ag-ev'+rep+'">'+col+evNombre(e)+bg+
             '<span class="ac">'+
               '<button class="ag-ib" data-cal="'+e.id+'" title="Añadir al Calendario de iOS">📅</button>'+
               '<button class="ag-ib" data-del="'+e.id+'" title="Borrar">✕</button>'+
@@ -357,8 +446,9 @@
             '<option value="daily"'+(p.recurrence&&p.recurrence.type==='daily'?' selected':'')+'>Cada día</option>'+
             '<option value="weekly"'+(p.recurrence&&p.recurrence.type==='weekly'?' selected':'')+'>Cada semana (ese día)</option>'+
           '</select></div>'+
-          '<div class="h"><div class="l">&nbsp;</div><label class="ck"><input type="checkbox" id="ag-p-ht"'+(p.hasTime?' checked':'')+'> con hora</label></div>'+
+          '<div class="h"><div class="l">Duración (min)</div><input id="ag-p-dur" type="number" min="0" step="5" inputmode="numeric" value="'+(p.dur||'')+'"></div>'+
         '</div>'+
+        '<div class="r"><label class="ck"><input type="checkbox" id="ag-p-ht"'+(p.hasTime?' checked':'')+'> con hora</label></div>'+
         '<div class="acts"><button id="ag-no">Descartar</button><button id="ag-ok">✓ Guardar</button></div>'+
       '</div>';
     document.getElementById('ag-ok').addEventListener('click',()=>{
@@ -371,10 +461,11 @@
       let recurrence = null;
       if(rv==='daily') recurrence={type:'daily'};
       else if(rv==='weekly') recurrence={type:'weekly', dow:dt.getDay()};
+      const dur = parseInt(document.getElementById('ag-p-dur').value,10) || null;
       // si el evento cae fuera de la semana visible, vuelve a la semana del evento
       const lunEv = lunesDe(dt), lunHoy = lunesDe(new Date());
       semanaOffset = Math.round((lunEv - lunHoy)/(7*864e5));
-      addEvento({title, date:dt, hasTime, recurrence});
+      addEvento({title, date:dt, hasTime, dur, recurrence});
       box.innerHTML='';
       const ta=document.getElementById('ag-texto'); if(ta){ ta.value=''; ta.style.height='auto'; }
       agToast('Misión guardada ✓');
@@ -415,8 +506,10 @@
       const w = e.target.closest('[data-w]');
       if(w){ semanaOffset += (+w.dataset.w); renderAgenda(); return; }
       const cal = e.target.closest('[data-cal]'); const del = e.target.closest('[data-del]');
-      if(cal){ const ev=(D.eventos||[]).find(x=>x.id===cal.dataset.cal); if(ev) exportICS(ev); }
-      if(del){ delEvento(del.dataset.del); }
+      if(cal){ const ev=(D.eventos||[]).find(x=>x.id===cal.dataset.cal); if(ev) exportICS(ev); return; }
+      if(del){ delEvento(del.dataset.del); return; }
+      const dia = e.target.closest('[data-dia]');
+      if(dia){ openDia(dia.dataset.dia); }
     });
     renderAgenda();
   }
