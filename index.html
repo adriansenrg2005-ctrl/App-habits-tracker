@@ -108,7 +108,7 @@
   .l-p{font-size:11px;color:var(--muted);flex-shrink:0;text-align:right}
 
   /* ===== página de agenda / voz ===== */
-  .ag-h1{font-size:22px;font-weight:700;margin-bottom:2px}
+  .ag-h1{font-size:22px;font-weight:700;margin:10px 0 18px}
   .ag-cap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
   .ag-cap>label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:8px}
   .ag-bar{display:flex;gap:8px;align-items:stretch}
@@ -159,6 +159,25 @@
   .ag-ib{background:var(--bg);border:1px solid var(--line);color:var(--muted);width:34px;height:34px;border-radius:9px;font-size:14px;cursor:pointer;line-height:1}
   .ag-ib:active{transform:scale(.9)}
   .ag-ev .ag-ib{width:29px;height:29px;font-size:12px}
+  .ag-ev .nm{text-transform:uppercase;letter-spacing:.02em}
+  .ag-ev .nm .dur{text-transform:none;color:var(--muted);font-weight:400;font-size:11px;letter-spacing:0}
+  .ag-dhdr{cursor:pointer}
+  .ag-dver{margin-left:6px;color:var(--dim);font-size:14px}
+  .ag-dhab{margin-left:auto}
+  .ag-dhdr .ag-dver:last-child{margin-left:6px}
+  .ag-ovl{position:fixed;inset:0;background:rgba(5,7,14,.7);backdrop-filter:blur(3px);z-index:30;
+    display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+  .ag-ovl.open{opacity:1;pointer-events:auto}
+  .ag-modal{background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;
+    width:100%;max-width:430px;max-height:75vh;overflow-y:auto;padding:14px 14px max(18px,env(safe-area-inset-bottom));
+    transform:translateY(12px);transition:.2s}
+  .ag-ovl.open .ag-modal{transform:none}
+  .ag-mhdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  .ag-mhdr b{display:block;font-size:16px;color:var(--oro);letter-spacing:.05em}
+  .ag-mhdr span{font-size:11px;color:var(--muted)}
+  .ag-ev.grande{padding:10px 11px}
+  .ag-ev.grande .t{min-width:0;margin-right:2px}
+  .ag-ev.grande .nm{font-size:14px}
 </style>
 </head>
 <body>
